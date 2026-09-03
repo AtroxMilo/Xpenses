@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name=xpenses --branch=main"
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "dexie": "^4.4.5",
