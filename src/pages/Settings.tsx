@@ -3,6 +3,8 @@ import { db, exportAll, importAll } from '../db/db'
 import { addExpense } from '../db/repo'
 import { useAiConfig } from '../hooks/useAiConfig'
 import { usePeriod } from '../hooks/useSettings'
+import { useTheme } from '../hooks/useTheme'
+import type { Theme } from '../lib/theme'
 import { PROVIDERS, providerInfo } from '../lib/ai/types'
 import { CATEGORIES } from '../lib/categories'
 import { toISODate } from '../lib/dates'
@@ -10,6 +12,7 @@ import { Card, PageTitle, PeriodToggle, SectionTitle } from '../components/ui'
 
 export function Settings() {
   const [period, setPeriod] = usePeriod()
+  const [theme, setTheme] = useTheme()
   const { config, setProvider, setApiKey, setModel } = useAiConfig()
   const fileRef = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')
@@ -67,6 +70,27 @@ export function Settings() {
   return (
     <div>
       <PageTitle>Settings</PageTitle>
+
+      <SectionTitle>Appearance</SectionTitle>
+      <Card className="flex items-center justify-between">
+        <span className="text-sm text-slate-600 dark:text-slate-300">Theme</span>
+        <div className="inline-flex rounded-full bg-slate-200 p-1 text-sm dark:bg-slate-800">
+          {(['light', 'dark', 'system'] as Theme[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTheme(t)}
+              className={`rounded-full px-3 py-1 font-medium capitalize transition ${
+                theme === t
+                  ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white'
+                  : 'text-slate-500'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <SectionTitle>Default period</SectionTitle>
       <Card className="flex items-center justify-between">

@@ -1,7 +1,20 @@
 @import 'tailwindcss';
 
+/* Drive `dark:` utilities from a data-theme attribute on <html> so the user
+   can override the OS setting. A small script in index.html sets it before
+   first paint; src/lib/theme.ts keeps it in sync afterwards. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+  --bg: #f1f5f9;
+  --fg: #0f172a;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --fg: #e2e8f0;
 }
 
 html,
@@ -12,17 +25,10 @@ body,
 
 body {
   margin: 0;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--bg);
+  color: var(--fg);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #0f172a;
-    color: #e2e8f0;
-  }
 }
 
 /* Respect the iPhone safe areas when installed as a PWA */
