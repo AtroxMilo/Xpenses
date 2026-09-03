@@ -32,16 +32,28 @@ React Router · Recharts · vite-plugin-pwa.
 
 ## Deploy — Cloudflare Pages
 
+### Option A — one command (no GitHub repo needed)
+
+```bash
+npx wrangler login      # one time, opens a browser
+npm run deploy          # builds and uploads dist/ to the "xpenses" project
+```
+
+First run creates the Pages project and prints the live URL. Re-run `npm run
+deploy` any time to ship an update.
+
+### Option B — connect Git (auto-deploy on push)
+
 1. Push this repo to GitHub/GitLab.
 2. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**.
 3. Build settings:
    - Framework preset: **None**
    - Build command: `npm run build`
    - Build output directory: `dist`
-4. Deploy. `public/_redirects` already handles SPA client-side routing.
 
-No environment variables are needed yet. The receipt-scanning proxy (M5) will
-add a Pages Function under `functions/` plus an API key secret.
+`public/_redirects` already handles SPA client-side routing. No environment
+variables are needed yet — the receipt-scanning proxy (M5) will add a Pages
+Function under `functions/` plus an API key secret.
 
 ## Project layout
 
