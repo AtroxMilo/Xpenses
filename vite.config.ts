@@ -5,12 +5,20 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // In dev the Worker (auth + backup API) runs separately via `npm run dev:api`.
+  server: {
+    proxy: { '/api': 'http://localhost:8787' },
+  },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
+      workbox: {
+        // Never let the service worker cache or SPA-rewrite the backup API.
+        navigateFallbackDenylist: [/^\/api\//],
+      },
       manifest: {
         name: 'Xpenses',
         short_name: 'Xpenses',

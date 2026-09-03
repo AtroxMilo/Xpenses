@@ -9,6 +9,7 @@ import { PROVIDERS, providerInfo } from '../lib/ai/types'
 import { CATEGORIES } from '../lib/categories'
 import { toISODate } from '../lib/dates'
 import { Card, PageTitle, PeriodToggle, SectionTitle } from '../components/ui'
+import { SyncCard } from '../components/SyncCard'
 
 export function Settings() {
   const [period, setPeriod] = usePeriod()
@@ -146,6 +147,8 @@ export function Settings() {
         </div>
         {msg && <p className="text-xs text-emerald-600">{msg}</p>}
       </Card>
+
+      <SyncCard />
 
       <SectionTitle>Receipt scanning</SectionTitle>
       <Card className="space-y-3">
