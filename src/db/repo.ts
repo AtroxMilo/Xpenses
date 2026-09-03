@@ -35,6 +35,25 @@ export async function updateExpense(id: string, patch: Partial<Expense>): Promis
   await db.expenses.update(id, { ...patch, updatedAt: Date.now() })
 }
 
+export interface LineItemInput {
+  name: string
+  qty: number
+  unitPrice: number
+  lineTotal: number
+}
+
+/** Used by receipt scanning: one expense plus its itemised breakdown. */
+export async function addExpenseWithLineItems(
+  input: ExpenseInput,
+  items: LineItemInput[],
+): Promise<string> {
+  const id = await addExpense({ ...input, source: 'receipt' })
+  if (items.length) {
+    await db.lineItems.bulkAdd(items.map((it) => ({ id: uid(), expenseId: id, ...it })))
+  }
+  return id
+}
+
 export async function deleteExpense(id: string): Promise<void> {
   await db.transaction('rw', db.expenses, db.lineItems, async () => {
     await db.lineItems.where('expenseId').equals(id).delete()

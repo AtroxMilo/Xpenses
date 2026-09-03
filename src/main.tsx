@@ -8,6 +8,7 @@ import { Budgets } from './pages/Budgets'
 import { Dashboard } from './pages/Dashboard'
 import { Expenses } from './pages/Expenses'
 import { Goals } from './pages/Goals'
+import { ScanReceipt } from './pages/ScanReceipt'
 import { Settings } from './pages/Settings'
 
 const router = createBrowserRouter([
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: 'expenses', element: <Expenses /> },
       { path: 'add', element: <AddExpense /> },
       { path: 'edit/:id', element: <AddExpense /> },
+      { path: 'scan', element: <ScanReceipt /> },
       { path: 'budgets', element: <Budgets /> },
       { path: 'goals', element: <Goals /> },
       { path: 'settings', element: <Settings /> },

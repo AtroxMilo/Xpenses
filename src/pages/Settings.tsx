@@ -1,15 +1,20 @@
 import { useRef, useState } from 'react'
 import { db, exportAll, importAll } from '../db/db'
 import { addExpense } from '../db/repo'
+import { useAiConfig } from '../hooks/useAiConfig'
 import { usePeriod } from '../hooks/useSettings'
+import { PROVIDERS, providerInfo } from '../lib/ai/types'
 import { CATEGORIES } from '../lib/categories'
 import { toISODate } from '../lib/dates'
 import { Card, PageTitle, PeriodToggle, SectionTitle } from '../components/ui'
 
 export function Settings() {
   const [period, setPeriod] = usePeriod()
+  const { config, setProvider, setApiKey, setModel } = useAiConfig()
   const fileRef = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const info = providerInfo(config.provider)
 
   async function doExport() {
     const json = await exportAll()
@@ -118,11 +123,80 @@ export function Settings() {
         {msg && <p className="text-xs text-emerald-600">{msg}</p>}
       </Card>
 
-      <SectionTitle>Coming next</SectionTitle>
-      <Card>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          📸 Receipt scanning — snap a photo and Xpenses fills in the amount, merchant and line
-          items for you. Planned for the next milestone.
+      <SectionTitle>Receipt scanning</SectionTitle>
+      <Card className="space-y-3">
+        <p className="text-xs text-slate-400">
+          Bring your own AI key — it is stored only in this browser and sent straight to the
+          provider you pick, never to an Xpenses server.
+        </p>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Provider
+          </span>
+          <select
+            value={config.provider}
+            onChange={(e) => setProvider(e.target.value as typeof config.provider)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+          >
+            {PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {info.freeTierNote}{' '}
+          <a
+            href={info.keyUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold underline"
+          >
+            Get a key ↗
+          </a>
+        </p>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+            API key
+          </span>
+          <div className="flex gap-2">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={config.apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Paste your key"
+              autoComplete="off"
+              spellCheck={false}
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-900"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((s) => !s)}
+              className="rounded-xl border border-slate-200 px-3 text-sm dark:border-slate-700"
+            >
+              {showKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Model <span className="normal-case text-slate-300">(optional override)</span>
+          </span>
+          <input
+            value={config.model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder={info.defaultModel}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-900"
+          />
+        </label>
+
+        <p className="text-xs text-slate-400">
+          Receipts are read in any language and saved in English.
         </p>
       </Card>
 
