@@ -11,8 +11,8 @@ const tabs = [
 export function Layout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const onAddScreen =
-    pathname === '/add' || pathname === '/scan' || pathname.startsWith('/edit/')
+  // The quick-add buttons only make sense where you're looking at spending.
+  const showQuickAdd = pathname === '/' || pathname === '/expenses'
 
   return (
     <div className="mx-auto flex min-h-full max-w-lg flex-col bg-slate-100 dark:bg-slate-950">
@@ -20,7 +20,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {!onAddScreen && (
+      {showQuickAdd && (
         <div className="fixed bottom-24 left-1/2 z-20 flex -translate-x-1/2 gap-2">
           <button
             type="button"
