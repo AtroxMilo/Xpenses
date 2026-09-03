@@ -22,7 +22,7 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'gemini',
     label: 'Google Gemini',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: 'gemini-3.6-flash',
     keyUrl: 'https://aistudio.google.com/apikey',
     freeTierNote: 'Free tier, no card needed — ~1,500 requests/day. Recommended.',
     browserFriendly: true,
@@ -30,7 +30,7 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'openrouter',
     label: 'OpenRouter',
-    defaultModel: 'google/gemini-2.0-flash-exp:free',
+    defaultModel: 'google/gemini-3.6-flash',
     keyUrl: 'https://openrouter.ai/keys',
     freeTierNote: 'One key, many models — includes free vision models.',
     browserFriendly: true,

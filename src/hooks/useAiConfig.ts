@@ -8,6 +8,14 @@ const KEYS = {
   model: 'ai.model',
 } as const
 
+/** Model ids the providers have since retired — fall back to the current default. */
+const RETIRED_MODELS = new Set([
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
+  'google/gemini-2.0-flash-exp:free',
+])
+
 export function useAiConfig(): {
   config: AiConfig
   ready: boolean
@@ -22,7 +30,11 @@ export function useAiConfig(): {
 
   const provider = (rows?.[0]?.value as AiProvider) || 'gemini'
   const apiKey = rows?.[1]?.value ?? ''
-  const model = rows?.[2]?.value || providerInfo(provider).defaultModel
+  const storedModel = rows?.[2]?.value ?? ''
+  const model =
+    storedModel && !RETIRED_MODELS.has(storedModel)
+      ? storedModel
+      : providerInfo(provider).defaultModel
 
   return {
     config: { provider, apiKey, model },
