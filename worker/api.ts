@@ -26,8 +26,32 @@ const json = (data: unknown, status = 200, headers: HeadersInit = {}) =>
   })
 
 export async function handleApi(req: Request, env: Env): Promise<Response> {
+  try {
+    return await route(req, env)
+  } catch (err) {
+    return json(
+      { error: 'server_error', detail: err instanceof Error ? err.message : String(err) },
+      500,
+    )
+  }
+}
+
+async function route(req: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(req.url)
   const { method } = req
+
+  // Unauthenticated health check — confirms bindings without leaking anything.
+  if (pathname === '/api/health') {
+    return json({
+      ok: Boolean(env.SESSION_SECRET) && Boolean(env.XP_BACKUP),
+      hasSecret: Boolean(env.SESSION_SECRET),
+      hasKv: Boolean(env.XP_BACKUP),
+    })
+  }
+
+  if (!env.SESSION_SECRET) {
+    return json({ error: 'server_misconfigured', detail: 'SESSION_SECRET is not set' }, 503)
+  }
 
   if (pathname === '/api/session') {
     if (method === 'POST') return sessionCreate(req, env)
