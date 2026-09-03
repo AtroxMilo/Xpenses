@@ -103,8 +103,8 @@ export function ScanReceipt() {
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <span className="text-5xl">📸</span>
           <p className="text-sm text-slate-500">
-            Take a photo of a receipt. {providerInfo(config.provider).label} reads the merchant,
-            total and each item (translated to English) — you check it before saving.
+            Take or pick a photo of a receipt. {providerInfo(config.provider).label} reads the
+            merchant, total and each item (translated to English) — you check it before saving.
           </p>
           <button
             type="button"
@@ -118,7 +118,6 @@ export function ScanReceipt() {
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0]
