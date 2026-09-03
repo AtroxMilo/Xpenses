@@ -36,24 +36,24 @@ React Router · Recharts · vite-plugin-pwa.
 
 ```bash
 npx wrangler login      # one time, opens a browser
-npm run deploy          # builds and uploads dist/ to the "xpenses" project
+npm run deploy          # runs the build, then `wrangler deploy`
 ```
 
-First run creates the Pages project and prints the live URL. Re-run `npm run
-deploy` any time to ship an update.
+Re-run `npm run deploy` any time to ship an update.
 
 ### Option B — connect Git (auto-deploy on push)
 
-1. Push this repo to GitHub/GitLab.
-2. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**.
+1. Push this repo to GitHub.
+2. Cloudflare dashboard → **Compute → Workers & Pages → Create → Pages tab →
+   Connect to Git**, pick the repo.
 3. Build settings:
-   - Framework preset: **None**
    - Build command: `npm run build`
-   - Build output directory: `dist`
+   - Deploy command: `npx wrangler deploy`
 
-`public/_redirects` already handles SPA client-side routing. No environment
-variables are needed yet — the receipt-scanning proxy (M5) will add a Pages
-Function under `functions/` plus an API key secret.
+`wrangler.jsonc` serves `dist/` as static assets with SPA fallback
+(`not_found_handling: "single-page-application"`) — no `_redirects` file, no
+Worker script. Receipt scanning needs no server key: users supply their own
+AI key in Settings and it is stored only in their browser.
 
 ## Project layout
 
