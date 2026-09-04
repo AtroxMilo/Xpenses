@@ -5,6 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // A visible build stamp (Settings footer) so it's obvious which deploy a
+  // device is actually running — no more guessing whether a push landed.
+  define: {
+    __BUILD_ID__: JSON.stringify(new Date().toISOString()),
+  },
   // In dev the Worker (auth + backup API) runs separately via `npm run dev:api`.
   server: {
     proxy: { '/api': 'http://localhost:8787' },

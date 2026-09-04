@@ -227,7 +227,15 @@ export function Settings() {
         </p>
       </Card>
 
-      <p className="mt-6 text-center text-xs text-slate-300">Xpenses · local-first MVP</p>
+      <p className="mt-6 text-center text-xs text-slate-300">
+        Xpenses · local-first MVP · build{' '}
+        {new Date(__BUILD_ID__).toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })}
+      </p>
     </div>
   )
 }
