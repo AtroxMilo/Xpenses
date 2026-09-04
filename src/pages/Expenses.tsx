@@ -32,9 +32,10 @@ export function Expenses() {
     })
     const byDate = new Map<string, typeof filtered>()
     for (const e of filtered) {
-      const list = byDate.get(e.date) ?? []
+      const day = e.date.slice(0, 10)
+      const list = byDate.get(day) ?? []
       list.push(e)
-      byDate.set(e.date, list)
+      byDate.set(day, list)
     }
     return [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1))
   }, [all, q, scope, range])
