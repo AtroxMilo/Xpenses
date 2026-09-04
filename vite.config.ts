@@ -14,6 +14,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registration is done manually via virtual:pwa-register in
+      // UpdateToast so we can show a tap-to-refresh prompt and force update
+      // checks on foreground — the auto-injected script would register a
+      // second time and skip that.
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       workbox: {
         // Never let the service worker cache or SPA-rewrite the backup API.

@@ -10,6 +10,7 @@ import { Expenses } from './pages/Expenses'
 import { Goals } from './pages/Goals'
 import { ScanReceipt } from './pages/ScanReceipt'
 import { Settings } from './pages/Settings'
+import { UpdateToast } from './components/UpdateToast'
 import { initAutoSync } from './lib/sync/sync'
 
 const router = createBrowserRouter([
@@ -34,6 +35,7 @@ void initAutoSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <UpdateToast />
     <RouterProvider router={router} />
   </StrictMode>,
 )
