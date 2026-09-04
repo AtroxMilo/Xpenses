@@ -110,7 +110,7 @@ export function Dashboard() {
                 labelStyle={{ color: '#0f172a' }}
                 contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
               />
-              <Bar dataKey="amount" fill="#0f172a" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
