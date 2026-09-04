@@ -31,7 +31,9 @@ export function Dashboard() {
 
   const trend = daysInRange(current).map((iso) => ({
     day: shortDay(iso),
-    amount: curExpenses.filter((e) => e.date === iso).reduce((s, e) => s + e.amount, 0),
+    amount: curExpenses
+      .filter((e) => e.date.slice(0, 10) === iso)
+      .reduce((s, e) => s + e.amount, 0),
   }))
 
   return (

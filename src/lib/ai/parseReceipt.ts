@@ -41,11 +41,12 @@ export async function parseReceipt(
   base64: string,
   mimeType: string,
   cfg: AiConfig,
+  signal?: AbortSignal,
 ): Promise<ReceiptDraft> {
   if (!cfg.apiKey.trim()) {
     throw new Error('No API key set. Add one under Settings → Receipt scanning.')
   }
-  const raw = await callProvider(base64, mimeType, receiptPrompt(), cfg)
+  const raw = await callProvider(base64, mimeType, receiptPrompt(), cfg, signal)
   const obj = extractJson(raw) as Record<string, unknown>
 
   const lineItems: ReceiptLineItemDraft[] = Array.isArray(obj.lineItems)

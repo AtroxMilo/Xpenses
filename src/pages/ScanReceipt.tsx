@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { addExpenseWithLineItems } from '../db/repo'
 import { useAiConfig } from '../hooks/useAiConfig'
 import { parseReceipt } from '../lib/ai/parseReceipt'
+import { CancelledError } from '../lib/ai/providers'
 import type { ReceiptDraft } from '../lib/ai/types'
 import { providerInfo } from '../lib/ai/types'
 import { CATEGORIES } from '../lib/categories'
@@ -19,25 +20,58 @@ export function ScanReceipt() {
   const navigate = useNavigate()
   const { config, ready } = useAiConfig()
   const fileRef = useRef<HTMLInputElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState('')
   const [preview, setPreview] = useState('')
   const [draft, setDraft] = useState<ReceiptDraft | null>(null)
+  const [workingHint, setWorkingHint] = useState('')
+
+  // Reassure the user it's still going, not frozen — Gemini in particular
+  // can take a while (or need a retry) when it's under heavy load.
+  useEffect(() => {
+    if (phase !== 'working') return
+    const t1 = setTimeout(
+      () => setWorkingHint('Still working — this can take a bit longer when the AI is busy…'),
+      8_000,
+    )
+    const t2 = setTimeout(
+      () => setWorkingHint('Taking longer than usual. Feel free to cancel and try again.'),
+      25_000,
+    )
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [phase])
 
   async function onPick(file: File) {
     setError('')
+    setWorkingHint('')
     setPhase('working')
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
       const img = await encodeImageForUpload(file)
       setPreview(img.dataUrl)
-      const result = await parseReceipt(img.base64, img.mimeType, config)
+      const result = await parseReceipt(img.base64, img.mimeType, config, controller.signal)
       setDraft({ ...result, date: result.date || todayISO() })
       setPhase('review')
     } catch (e) {
+      if (e instanceof CancelledError) {
+        setPhase('idle')
+        return
+      }
       setError(e instanceof Error ? e.message : 'Something went wrong.')
       setPhase('idle')
+    } finally {
+      abortRef.current = null
     }
+  }
+
+  function cancel() {
+    abortRef.current?.abort()
   }
 
   function patch(p: Partial<ReceiptDraft>) {
@@ -132,6 +166,14 @@ export function ScanReceipt() {
         <div className="flex flex-col items-center gap-3 py-16 text-center text-slate-500">
           <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900 dark:border-t-white" />
           <p className="text-sm">Reading the receipt…</p>
+          {workingHint && <p className="max-w-xs text-xs text-slate-400">{workingHint}</p>}
+          <button
+            type="button"
+            onClick={cancel}
+            className="mt-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-500 dark:border-slate-700"
+          >
+            Cancel
+          </button>
         </div>
       )}
 

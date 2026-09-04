@@ -17,6 +17,19 @@ export function todayISO(): string {
   return toISODate(new Date())
 }
 
+/**
+ * Parses a "YYYY-MM-DD" string (tolerating a trailing time suffix, e.g. from
+ * legacy/imported data) into a LOCAL-midnight Date. `new Date(isoString)`
+ * parses date-only strings as UTC midnight, which silently shifts the
+ * calendar day by one for anyone west of UTC once local-timezone math is
+ * applied on top — every read of a stored date string should go through
+ * this instead.
+ */
+function parseISODate(iso: string): Date {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 /** Monday-based start of week. */
 function startOfWeek(d: Date): Date {
   const x = new Date(d)
@@ -67,8 +80,8 @@ export function inRange(isoDate: string, range: Range): boolean {
 /** Number of day-buckets in a range, for trend charts. */
 export function daysInRange(range: Range): string[] {
   const out: string[] = []
-  const d = new Date(range.start)
-  const end = new Date(range.end)
+  const d = parseISODate(range.start)
+  const end = parseISODate(range.end)
   while (d <= end) {
     out.push(toISODate(d))
     d.setDate(d.getDate() + 1)
@@ -77,16 +90,18 @@ export function daysInRange(range: Range): string[] {
 }
 
 export function shortDay(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric' }).format(new Date(iso))
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric' }).format(
+    parseISODate(iso),
+  )
 }
 
 export function friendlyDate(iso: string): string {
   const today = todayISO()
-  if (iso === today) return 'Today'
+  if (iso.slice(0, 10) === today) return 'Today'
   const y = new Date()
   y.setDate(y.getDate() - 1)
-  if (iso === toISODate(y)) return 'Yesterday'
+  if (iso.slice(0, 10) === toISODate(y)) return 'Yesterday'
   return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'short' }).format(
-    new Date(iso),
+    parseISODate(iso),
   )
 }

@@ -54,6 +54,20 @@ export async function addExpenseWithLineItems(
   return id
 }
 
+/**
+ * Replaces every line item belonging to an expense with a fresh set — used
+ * when editing an expense (scanned or manual) so the itemised breakdown can
+ * be added to, edited, or trimmed down, not just the expense as a whole.
+ */
+export async function replaceLineItems(expenseId: string, items: LineItemInput[]): Promise<void> {
+  await db.transaction('rw', db.lineItems, async () => {
+    await db.lineItems.where('expenseId').equals(expenseId).delete()
+    if (items.length) {
+      await db.lineItems.bulkAdd(items.map((it) => ({ id: uid(), expenseId, ...it })))
+    }
+  })
+}
+
 export async function deleteExpense(id: string): Promise<void> {
   await db.transaction('rw', db.expenses, db.lineItems, async () => {
     await db.lineItems.where('expenseId').equals(id).delete()
