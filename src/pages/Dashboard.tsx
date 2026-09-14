@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { db } from '../db/db'
 import { ALL_SCOPE } from '../db/schema'
@@ -18,9 +18,17 @@ import { money, pctChange, signedPct } from '../lib/format'
 import { Card, PageTitle, PeriodToggle, SectionTitle } from '../components/ui'
 
 export function Dashboard() {
-  const [period, setPeriod] = usePeriod()
-  const current = useMemo(() => periodRange(period, 0), [period])
-  const previous = useMemo(() => periodRange(period, 1), [period])
+  const [period, setPeriodSetting] = usePeriod()
+  // 0 = the current week/month/year, 1 = the one before, and so on.
+  const [offset, setOffset] = useState(0)
+  const touchStartX = useRef<number | null>(null)
+  const current = useMemo(() => periodRange(period, offset), [period, offset])
+  const previous = useMemo(() => periodRange(period, offset + 1), [period, offset])
+
+  function setPeriod(p: typeof period) {
+    setPeriodSetting(p)
+    setOffset(0)
+  }
 
   const curExpenses = useExpensesInRange(current)
   const prevExpenses = useExpensesInRange(previous)
@@ -61,6 +69,24 @@ export function Dashboard() {
   // useAllExpenses() is already sorted by date descending.
   const firstDate = allExpenses.length ? allExpenses[allExpenses.length - 1].date : ''
 
+  // Stop going back once the period starts before the very first expense.
+  const canGoBack = firstDate !== '' && current.start > firstDate.slice(0, 10)
+  const canGoForward = offset > 0
+  const goBack = () => canGoBack && setOffset((o) => o + 1)
+  const goForward = () => canGoForward && setOffset((o) => o - 1)
+  const prevWord = offset === 0 ? 'last' : 'the previous'
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    if (dx > 60) goBack()
+    else if (dx < -60) goForward()
+  }
+
   const byYearMap = new Map<string, number>()
   for (const e of allExpenses) {
     const y = e.date.slice(0, 4)
@@ -76,7 +102,42 @@ export function Dashboard() {
       <PageTitle right={<PeriodToggle value={period} onChange={setPeriod} />}>Dashboard</PageTitle>
 
       <Card>
-        <p className="text-sm text-slate-400">{current.label}</p>
+        <div
+          className="-mx-1 mb-1 flex items-center justify-between"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          <button
+            type="button"
+            onClick={goBack}
+            disabled={!canGoBack}
+            aria-label={`Previous ${periodNoun(period)}`}
+            className="rounded-full px-3 py-1 text-xl text-slate-500 active:bg-slate-200 disabled:opacity-25 dark:active:bg-slate-800"
+          >
+            ‹
+          </button>
+          <div className="text-center">
+            <p className="text-sm text-slate-400">{current.label}</p>
+            {offset > 0 && (
+              <button
+                type="button"
+                onClick={() => setOffset(0)}
+                className="text-xs font-medium text-blue-500"
+              >
+                Back to this {periodNoun(period)}
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={goForward}
+            disabled={!canGoForward}
+            aria-label={`Next ${periodNoun(period)}`}
+            className="rounded-full px-3 py-1 text-xl text-slate-500 active:bg-slate-200 disabled:opacity-25 dark:active:bg-slate-800"
+          >
+            ›
+          </button>
+        </div>
         <p
           className={`mt-1 text-4xl font-bold ${
             change === null
@@ -99,11 +160,11 @@ export function Dashboard() {
             }
           >
             {change === null
-              ? 'No data last ' + periodNoun(period)
+              ? `No data ${prevWord} ${periodNoun(period)}`
               : `${up ? '▲' : '▼'} ${signedPct(change)}`}
           </span>{' '}
           <span className="text-slate-400">
-            vs {money(prevTotal)} last {periodNoun(period)}
+            vs {money(prevTotal)} {prevWord} {periodNoun(period)}
           </span>
         </p>
 
@@ -128,9 +189,12 @@ export function Dashboard() {
       </Card>
 
       <SectionTitle>{period === 'yearly' ? 'Monthly spend' : 'Daily spend'}</SectionTitle>
-      <Card>
+      <Card className="touch-pan-y">
+        <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {curTotal === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400">Nothing recorded yet.</p>
+          <p className="py-6 text-center text-sm text-slate-400">
+            Nothing recorded this {periodNoun(period)}.
+          </p>
         ) : (
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={trend} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
@@ -151,6 +215,7 @@ export function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
         )}
+        </div>
       </Card>
 
       <SectionTitle>By category</SectionTitle>
