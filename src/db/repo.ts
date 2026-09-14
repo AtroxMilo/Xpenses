@@ -1,5 +1,5 @@
 import { db, uid } from './db'
-import type { Expense, Period } from './schema'
+import type { Expense } from './schema'
 
 // ---- Expenses -------------------------------------------------------------
 
@@ -73,21 +73,6 @@ export async function deleteExpense(id: string): Promise<void> {
     await db.lineItems.where('expenseId').equals(id).delete()
     await db.expenses.delete(id)
   })
-}
-
-// ---- Budgets ------------------------------------------------------------
-
-export async function upsertBudget(period: Period, scope: string, amount: number): Promise<void> {
-  const existing = await db.budgets.where({ period, scope }).first()
-  if (existing) {
-    await db.budgets.update(existing.id, { amount })
-  } else {
-    await db.budgets.add({ id: uid(), period, scope, amount })
-  }
-}
-
-export async function deleteBudget(id: string): Promise<void> {
-  await db.budgets.delete(id)
 }
 
 // ---- Goals ------------------------------------------------------------

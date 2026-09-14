@@ -4,7 +4,6 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import './index.css'
 import { Layout } from './components/Layout'
 import { AddExpense } from './pages/AddExpense'
-import { Budgets } from './pages/Budgets'
 import { Dashboard } from './pages/Dashboard'
 import { Expenses } from './pages/Expenses'
 import { Goals } from './pages/Goals'
@@ -23,7 +22,6 @@ const router = createBrowserRouter([
       { path: 'add', element: <AddExpense /> },
       { path: 'edit/:id', element: <AddExpense /> },
       { path: 'scan', element: <ScanReceipt /> },
-      { path: 'budgets', element: <Budgets /> },
       { path: 'goals', element: <Goals /> },
       { path: 'settings', element: <Settings /> },
       { path: '*', element: <Navigate to="/" replace /> },

@@ -1,8 +1,5 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useRef, useState } from 'react'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
-import { db } from '../db/db'
-import { ALL_SCOPE } from '../db/schema'
 import { sumByCategory, total, useAllExpenses, useExpensesInRange } from '../hooks/useExpenses'
 import { usePeriod } from '../hooks/useSettings'
 import { categoryMeta } from '../lib/categories'
@@ -33,7 +30,6 @@ export function Dashboard() {
   const curExpenses = useExpensesInRange(current)
   const prevExpenses = useExpensesInRange(previous)
   const allExpenses = useAllExpenses()
-  const budgets = useLiveQuery(() => db.budgets.where('period').equals(period).toArray(), [period])
 
   if (!curExpenses || !prevExpenses || !allExpenses) {
     return <p className="text-slate-400">Loading…</p>
@@ -45,7 +41,6 @@ export function Dashboard() {
   const up = change !== null && change > 0
 
   const byCategory = sumByCategory(curExpenses)
-  const overallBudget = budgets?.find((b) => b.scope === ALL_SCOPE)
 
   // A year's worth of day-bars is unreadable, so the yearly view buckets by month.
   const trend =
@@ -167,25 +162,6 @@ export function Dashboard() {
             vs {money(prevTotal)} {prevWord} {periodNoun(period)}
           </span>
         </p>
-
-        {overallBudget && (
-          <div className="mt-4">
-            <div className="mb-1 flex justify-between text-xs text-slate-400">
-              <span>Budget</span>
-              <span>
-                {money(curTotal)} / {money(overallBudget.amount)}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-              <div
-                className={`h-full rounded-full ${
-                  curTotal > overallBudget.amount ? 'bg-red-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${Math.min(100, (curTotal / overallBudget.amount) * 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
       </Card>
 
       <SectionTitle>{period === 'yearly' ? 'Monthly spend' : 'Daily spend'}</SectionTitle>
