@@ -6,7 +6,7 @@ import { ALL_SCOPE } from '../db/schema'
 import { total, useExpensesInRange } from '../hooks/useExpenses'
 import { usePeriod } from '../hooks/useSettings'
 import { CATEGORIES, categoryMeta } from '../lib/categories'
-import { periodRange } from '../lib/dates'
+import { periodNoun, periodRange } from '../lib/dates'
 import { money } from '../lib/format'
 import { Card, EmptyState, PageTitle, PeriodToggle, SectionTitle } from '../components/ui'
 
@@ -37,7 +37,7 @@ export function Budgets() {
     <div>
       <PageTitle right={<PeriodToggle value={period} onChange={setPeriod} />}>Budgets</PageTitle>
       <p className="mb-4 text-sm text-slate-400">
-        Limits for the current {period === 'weekly' ? 'week' : 'month'} ({range.label}).
+        Limits for the current {periodNoun(period)} ({range.label}).
       </p>
 
       <Card>

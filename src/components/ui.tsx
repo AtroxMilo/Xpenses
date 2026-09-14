@@ -37,18 +37,18 @@ export function PeriodToggle({
 }) {
   return (
     <div className="inline-flex rounded-full bg-slate-200 p-1 text-sm dark:bg-slate-800">
-      {(['weekly', 'monthly'] as Period[]).map((p) => (
+      {(['weekly', 'monthly', 'yearly'] as Period[]).map((p) => (
         <button
           key={p}
           type="button"
           onClick={() => onChange(p)}
-          className={`rounded-full px-3 py-1 font-medium capitalize transition ${
+          className={`rounded-full px-2.5 py-1 font-medium capitalize transition ${
             value === p
               ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white'
               : 'text-slate-500'
           }`}
         >
-          {p === 'weekly' ? 'Week' : 'Month'}
+          {p === 'weekly' ? 'Week' : p === 'monthly' ? 'Month' : 'Year'}
         </button>
       ))}
     </div>

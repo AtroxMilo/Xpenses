@@ -45,6 +45,12 @@ function startOfMonth(d: Date): Date {
 
 const WEEK_FMT = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
 const MONTH_FMT = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
+const MONTH_SHORT_FMT = new Intl.DateTimeFormat(undefined, { month: 'short' })
+
+/** 'week' | 'month' | 'year' — for sentences like "vs last {noun}". */
+export function periodNoun(period: Period): string {
+  return period === 'weekly' ? 'week' : period === 'monthly' ? 'month' : 'year'
+}
 
 /**
  * Returns the current and previous ranges for the given period.
@@ -61,6 +67,14 @@ export function periodRange(period: Period, offset = 0): Range {
       start: toISODate(start),
       end: toISODate(end),
       label: `${WEEK_FMT.format(start)} – ${WEEK_FMT.format(end)}`,
+    }
+  }
+  if (period === 'yearly') {
+    const year = now.getFullYear() - offset
+    return {
+      start: toISODate(new Date(year, 0, 1)),
+      end: toISODate(new Date(year, 11, 31)),
+      label: String(year),
     }
   }
   const start = startOfMonth(now)
@@ -85,6 +99,23 @@ export function daysInRange(range: Range): string[] {
   while (d <= end) {
     out.push(toISODate(d))
     d.setDate(d.getDate() + 1)
+  }
+  return out
+}
+
+/**
+ * Month-buckets ("YYYY-MM" + a short label) spanning a range — the trend chart
+ * uses these instead of days for the yearly view, where 365 bars would be
+ * unreadable. Match an expense with `expense.date.slice(0, 7) === key`.
+ */
+export function monthsInRange(range: Range): { key: string; label: string }[] {
+  const out: { key: string; label: string }[] = []
+  const start = parseISODate(range.start)
+  const end = parseISODate(range.end)
+  const d = new Date(start.getFullYear(), start.getMonth(), 1)
+  while (d <= end) {
+    out.push({ key: toISODate(d).slice(0, 7), label: MONTH_SHORT_FMT.format(d) })
+    d.setMonth(d.getMonth() + 1)
   }
   return out
 }

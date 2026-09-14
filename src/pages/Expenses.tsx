@@ -4,7 +4,7 @@ import { deleteExpense } from '../db/repo'
 import { useAllExpenses } from '../hooks/useExpenses'
 import { usePeriod } from '../hooks/useSettings'
 import { categoryMeta } from '../lib/categories'
-import { friendlyDate, inRange, periodRange } from '../lib/dates'
+import { friendlyDate, inRange, periodNoun, periodRange } from '../lib/dates'
 import { money } from '../lib/format'
 import { Card, EmptyState, PageTitle, PeriodToggle } from '../components/ui'
 
@@ -63,7 +63,7 @@ export function Expenses() {
           onClick={() => setScope(scope === 'period' ? 'all' : 'period')}
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium dark:border-slate-700 dark:bg-slate-900"
         >
-          {scope === 'period' ? 'This ' + (period === 'weekly' ? 'week' : 'month') : 'All time'}
+          {scope === 'period' ? 'This ' + periodNoun(period) : 'All time'}
         </button>
       </div>
 

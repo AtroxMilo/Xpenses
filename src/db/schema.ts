@@ -1,4 +1,4 @@
-export type Period = 'weekly' | 'monthly'
+export type Period = 'weekly' | 'monthly' | 'yearly'
 
 export interface Expense {
   id: string
