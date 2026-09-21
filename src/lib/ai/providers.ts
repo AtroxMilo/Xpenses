@@ -46,13 +46,18 @@ function combineSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal | undefin
  * 502/503/504 responses or network blips, and support for user cancellation
  * via `signal`. Returns whatever Response it ends up with (may still be
  * !ok) — callers translate that into a message via `asError`.
+ *
+ * The timeout is generous because a receipt means uploading a few hundred KB
+ * over mobile data and then waiting on a vision model. A timeout is NOT
+ * retried: if the model is being slow, two more silent attempts just make the
+ * user wait three times as long before seeing anything.
  */
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
   opts: { signal?: AbortSignal; timeoutMs?: number; retries?: number } = {},
 ): Promise<Response> {
-  const { signal: userSignal, timeoutMs = 20_000, retries = 2 } = opts
+  const { signal: userSignal, timeoutMs = 60_000, retries = 2 } = opts
   if (userSignal?.aborted) throw new CancelledError()
   for (let attempt = 0; ; attempt++) {
     const timeoutCtrl = new AbortController()
@@ -68,15 +73,16 @@ async function fetchWithRetry(
     } catch {
       clearTimeout(timer)
       if (userSignal?.aborted) throw new CancelledError()
+      if (timeoutCtrl.signal.aborted) {
+        throw new Error(
+          `Gave up after ${Math.round(timeoutMs / 1000)}s. The model may be busy — try again, or pick a faster model in Settings.`,
+        )
+      }
       if (attempt < retries) {
         await sleep(1200 * 2 ** attempt)
         continue
       }
-      throw new Error(
-        timeoutCtrl.signal.aborted
-          ? `Timed out after ${Math.round(timeoutMs / 1000)}s waiting for a reply. Check your connection and try again.`
-          : `Could not reach the server. Check your connection and try again.`,
-      )
+      throw new Error('Could not reach the server. Check your connection and try again.')
     }
   }
 }
@@ -107,6 +113,16 @@ const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     cfg.model,
   )}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0,
+    responseMimeType: 'application/json',
+  }
+  // Gemini 3.x thinks at "medium" unless told otherwise, which costs serious
+  // latency. Reading a receipt is transcription, not reasoning, so ask for the
+  // cheapest level. The field only exists on 3.x — sending it to 2.5 errors.
+  if (/^gemini-3/.test(cfg.model)) {
+    generationConfig.thinkingConfig = { thinkingLevel: 'low' }
+  }
   const res = await fetchWithRetry(
     url,
     {
@@ -116,7 +132,7 @@ const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
         contents: [
           { parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] },
         ],
-        generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+        generationConfig,
       }),
     },
     { signal },
