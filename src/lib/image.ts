@@ -7,13 +7,13 @@ export interface EncodedImage {
   dataUrl: string
 }
 
-// 1280px keeps receipt text legible to the model while roughly halving the
-// upload compared with 1600px — on mobile data the upload is a big slice of
-// the total wait.
+// 1000px still resolves receipt text for the model, and keeps the upload small
+// enough to finish on mobile data, where the upload — not the model — is
+// often what makes a scan time out.
 export async function encodeImageForUpload(
   file: File,
-  maxDim = 1280,
-  quality = 0.62,
+  maxDim = 1000,
+  quality = 0.55,
 ): Promise<EncodedImage> {
   const bitmap = await createImageBitmap(file)
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))

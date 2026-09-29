@@ -23,6 +23,15 @@ export class CancelledError extends Error {
   }
 }
 
+/** Thrown when one attempt ran out of time. Distinct so the Gemini adapter can
+ * move to the next model instead of ending the whole scan. */
+export class TimeoutError extends Error {
+  constructor(seconds: number) {
+    super(`Timed out after ${seconds}s waiting for a reply. Please try again.`)
+    this.name = 'TimeoutError'
+  }
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** Statuses worth a couple of automatic retries — transient server-side
@@ -73,11 +82,7 @@ async function fetchWithRetry(
     } catch {
       clearTimeout(timer)
       if (userSignal?.aborted) throw new CancelledError()
-      if (timeoutCtrl.signal.aborted) {
-        throw new Error(
-          `Gave up after ${Math.round(timeoutMs / 1000)}s. The model may be busy — try again, or pick a faster model in Settings.`,
-        )
-      }
+      if (timeoutCtrl.signal.aborted) throw new TimeoutError(Math.round(timeoutMs / 1000))
       if (attempt < retries) {
         await sleep(1200 * 2 ** attempt)
         continue
@@ -156,9 +161,13 @@ const GEMINI_FALLBACKS = [
 
 const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
   const candidates = [cfg.model, ...GEMINI_FALLBACKS.filter((m) => m !== cfg.model)]
-  let lastStatus = 0
+  // What each model did, so a total failure can say where the time went.
+  const attempts: string[] = []
+  const startedAt = Date.now()
 
   for (const model of candidates) {
+    const modelStartedAt = Date.now()
+    const secs = () => Math.round((Date.now() - modelStartedAt) / 1000)
     const generationConfig: Record<string, unknown> = {
       temperature: 0,
       responseMimeType: 'application/json',
@@ -170,22 +179,33 @@ const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
       generationConfig.thinkingConfig = { thinkingLevel: 'low' }
     }
 
-    const res = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-        model,
-      )}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            { parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] },
-          ],
-          generationConfig,
-        }),
-      },
-      { signal, retries: 1 },
-    )
+    let res: Response
+    try {
+      res = await fetchWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+          model,
+        )}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              { parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] },
+            ],
+            generationConfig,
+          }),
+        },
+        { signal, retries: 1, timeoutMs: 30_000 },
+      )
+    } catch (err) {
+      // A model that won't answer in time is no different from a busy one:
+      // note it and give the next candidate a go.
+      if (err instanceof TimeoutError) {
+        attempts.push(`${model}: no reply in ${secs()}s`)
+        continue
+      }
+      throw err
+    }
 
     if (res.ok) {
       const data = await res.json()
@@ -202,11 +222,13 @@ const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
     if (!RETRYABLE_STATUS.has(res.status) && !isModelUnavailable(res.status, body)) {
       throwProviderError(res.status, body, 'Gemini')
     }
-    lastStatus = res.status
+    attempts.push(`${model}: ${res.status} after ${secs()}s`)
   }
 
   throw new Error(
-    `Gemini could not serve any model (last status ${lastStatus}) — tried ${candidates.length}, all busy or unavailable. This is Google's side, not your key. Please try again in a minute.`,
+    `Gemini could not serve any model after ${Math.round(
+      (Date.now() - startedAt) / 1000,
+    )}s. ${attempts.join('; ')}. If every model timed out, the photo upload is likely the bottleneck — try again on Wi-Fi.`,
   )
 }
 
