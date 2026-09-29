@@ -109,39 +109,64 @@ async function asError(res: Response, provider: string): Promise<never> {
   throw new Error(`${provider}: request failed (${res.status}). ${detail}`)
 }
 
+/**
+ * Tried in order when the chosen model answers "overloaded". Google's free
+ * tier hands out 503s on whichever model is busiest, and the newest ones are
+ * the busiest — so the fallbacks get progressively lighter rather than newer.
+ */
+const GEMINI_FALLBACKS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+
 const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    cfg.model,
-  )}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`
-  const generationConfig: Record<string, unknown> = {
-    temperature: 0,
-    responseMimeType: 'application/json',
+  const candidates = [cfg.model, ...GEMINI_FALLBACKS.filter((m) => m !== cfg.model)]
+  let lastStatus = 0
+
+  for (const model of candidates) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0,
+      responseMimeType: 'application/json',
+    }
+    // Gemini 3.x thinks at "medium" unless told otherwise, which costs serious
+    // latency. Reading a receipt is transcription, not reasoning, so ask for
+    // the cheapest level. The field only exists on 3.x — 2.5 rejects it.
+    if (/^gemini-3/.test(model)) {
+      generationConfig.thinkingConfig = { thinkingLevel: 'low' }
+    }
+
+    const res = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        model,
+      )}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            { parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] },
+          ],
+          generationConfig,
+        }),
+      },
+      { signal, retries: 1 },
+    )
+
+    if (res.ok) {
+      const data = await res.json()
+      const text = data?.candidates?.[0]?.content?.parts
+        ?.map((p: { text?: string }) => p.text)
+        .join('')
+      if (!text) throw new Error('Gemini: empty response')
+      return text
+    }
+
+    // Anything the user can act on (bad key, quota) stops here; only capacity
+    // problems are worth asking a different model.
+    if (!RETRYABLE_STATUS.has(res.status)) await asError(res, 'Gemini')
+    lastStatus = res.status
   }
-  // Gemini 3.x thinks at "medium" unless told otherwise, which costs serious
-  // latency. Reading a receipt is transcription, not reasoning, so ask for the
-  // cheapest level. The field only exists on 3.x — sending it to 2.5 errors.
-  if (/^gemini-3/.test(cfg.model)) {
-    generationConfig.thinkingConfig = { thinkingLevel: 'low' }
-  }
-  const res = await fetchWithRetry(
-    url,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          { parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] },
-        ],
-        generationConfig,
-      }),
-    },
-    { signal },
+
+  throw new Error(
+    `Gemini is overloaded right now (${lastStatus}) — tried ${candidates.length} models and all were busy. This is Google's free tier being at capacity, not your key. Please try again in a minute.`,
   )
-  if (!res.ok) await asError(res, 'Gemini')
-  const data = await res.json()
-  const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join('')
-  if (!text) throw new Error('Gemini: empty response')
-  return text
 }
 
 const openaiCompatible =
