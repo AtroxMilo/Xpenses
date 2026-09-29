@@ -14,6 +14,7 @@ const RETIRED_MODELS = new Set([
   'gemini-1.5-flash',
   'gemini-1.5-pro',
   'google/gemini-2.0-flash-exp:free',
+  'gemini-flash-latest',
 ])
 
 export function useAiConfig(): {

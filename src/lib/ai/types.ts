@@ -22,7 +22,7 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'gemini',
     label: 'Google Gemini',
-    defaultModel: 'gemini-3.6-flash',
+    defaultModel: 'gemini-3.5-flash-lite',
     keyUrl: 'https://aistudio.google.com/apikey',
     freeTierNote: 'Free tier, no card needed — ~1,500 requests/day. Recommended.',
     browserFriendly: true,

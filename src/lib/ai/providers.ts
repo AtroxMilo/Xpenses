@@ -87,6 +87,37 @@ async function fetchWithRetry(
   }
 }
 
+/**
+ * Google retires models on its own schedule and the app only finds out when a
+ * call fails, so treat "this model is gone" as a reason to try the next one
+ * rather than an error for the user to fix. A bad key also returns 400, hence
+ * the check that the message is actually about the model.
+ */
+function isModelUnavailable(status: number, body: string): boolean {
+  if (status === 404) return true
+  return (
+    status === 400 &&
+    /model/i.test(body) &&
+    /not found|no longer|not supported|unsupported|deprecat|retired/i.test(body)
+  )
+}
+
+function throwProviderError(status: number, body: string, provider: string): never {
+  const detail = body.slice(0, 300)
+  if (status === 401 || status === 403) {
+    throw new Error(`${provider}: API key rejected (${status}). Check the key in Settings.`)
+  }
+  if (status === 429) {
+    throw new Error(`${provider}: rate limit / quota hit (429). Try again later.`)
+  }
+  if (RETRYABLE_STATUS.has(status)) {
+    throw new Error(
+      `${provider} is overloaded right now (${status}). It usually clears up within a minute or two — please try again.`,
+    )
+  }
+  throw new Error(`${provider}: request failed (${status}). ${detail}`)
+}
+
 async function asError(res: Response, provider: string): Promise<never> {
   let detail = ''
   try {
@@ -110,11 +141,18 @@ async function asError(res: Response, provider: string): Promise<never> {
 }
 
 /**
- * Tried in order when the chosen model answers "overloaded". Google's free
- * tier hands out 503s on whichever model is busiest, and the newest ones are
- * the busiest — so the fallbacks get progressively lighter rather than newer.
+ * Tried in order when the chosen model is overloaded or has been retired.
+ * All current 3.x: the 2.5 family is now restricted to accounts that already
+ * used it, and floating aliases like gemini-flash-latest have been withdrawn,
+ * so both are dead ends for a new key. Lite models come first — they have the
+ * most spare capacity, which is the usual reason we end up here.
  */
-const GEMINI_FALLBACKS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+const GEMINI_FALLBACKS = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.8-flash',
+]
 
 const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
   const candidates = [cfg.model, ...GEMINI_FALLBACKS.filter((m) => m !== cfg.model)]
@@ -158,14 +196,17 @@ const gemini: Adapter = async (base64, mimeType, prompt, cfg, signal) => {
       return text
     }
 
-    // Anything the user can act on (bad key, quota) stops here; only capacity
-    // problems are worth asking a different model.
-    if (!RETRYABLE_STATUS.has(res.status)) await asError(res, 'Gemini')
+    const body = await res.text().catch(() => '')
+    // Move on only when the model itself is the problem — busy, or gone.
+    // Anything the user can act on (bad key, quota) stops here.
+    if (!RETRYABLE_STATUS.has(res.status) && !isModelUnavailable(res.status, body)) {
+      throwProviderError(res.status, body, 'Gemini')
+    }
     lastStatus = res.status
   }
 
   throw new Error(
-    `Gemini is overloaded right now (${lastStatus}) — tried ${candidates.length} models and all were busy. This is Google's free tier being at capacity, not your key. Please try again in a minute.`,
+    `Gemini could not serve any model (last status ${lastStatus}) — tried ${candidates.length}, all busy or unavailable. This is Google's side, not your key. Please try again in a minute.`,
   )
 }
 
